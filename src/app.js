@@ -126,7 +126,7 @@ app.post("/signup", async (req,res)=>{
     await user.save();
     res.send("User saved successfuly")
   } catch (error) {
-    res.status(400).send("There is some problem in saving the data: ", error.message)
+    res.status(400).send("There is some problem in saving the data: " + error.message)
   }
 })
 
@@ -147,7 +147,7 @@ connectDB().then(()=>{
       console.log("Server is listening on port 7777");
     });
   }).catch((err)=>{
-  console.error("There is some problem in establishing DB connection")
+  console.error("There is some problem in establishing DB connection", err.message)
 })
 
 
