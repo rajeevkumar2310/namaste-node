@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const validator = require('validator');
 
 const userSchema = mongoose.Schema({
     firstName:{
@@ -11,14 +12,18 @@ const userSchema = mongoose.Schema({
     },
     emailId:{
         type: String,
-        unique:true
+        unique:true,
+        validate(value){
+            if(!validator.isEmail(value)){
+                throw new Error("invalid email format");
+            }
+        }
     },
     password:{ 
         type: String,
         validate(value){
-            const myRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
-            if(!myRegex.test(value)){
-                throw new Error("password must contain atleast 8 characters, 1 uppercase, 1 lowercase, 1 number and 1 special char")
+            if(!validator.isStrongPassword(value)){
+                throw new Error("not a strong password!!")
             }
         }
     },
