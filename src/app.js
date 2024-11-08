@@ -1,132 +1,91 @@
 const express = require("express");
 const connectDB = require("./config/database")
 const User = require("./models/user");
+const {validateData} = require("./utils/validate")
+const bcrypt = require("bcrypt");
+const validator = require("validator");
+const cookieParser = require("cookie-parser");
 const app = express();
+const jwt = require("jsonwebtoken");
+const {userAuth} = require("./middleware/auth")
 
-// app.get("/user/ab?c", (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/ab+c", (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/a(bc)?d", (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/a(bc)+d", (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/ab*cd", (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get(/a/, (req, res) => {
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/:userid", (req, res) => {
-//   console.log(req.params);
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user/:userid/:fname/:pwd", (req, res) => {
-//   console.log(req.params);
-//   res.send({ fname: "Rajeev", lname: "Kumar" });
-// });
-
-// app.get("/user", (req, res) => {
-//   console.log(req.query);
-//   res.send("This will show query params");
-// });
-
-// app.get("/user", (req, res) => {
-//   res.send("This is a get request.");
-// });
-
-// app.post("/user", (req, res) => {
-//   res.send("data saved to the database successfully");
-// });
-
-// app.delete("/user", (req, res) => {
-//   res.send("data deleted successfully");
-// });
-
-// app.use("/test", (req, res) => {
-//   res.send("this is a test page");
-// });
-
-// app.use("/hello", (req, res) => {
-//   res.send("Hello from hello page");
-// });
-
-// app.use("/", (req, res) => {
-//   res.send("Hello from___________________home page");
-// });
-
-// app.use("/user2", [
-//   (req, res, next) => {
-//     console.log("This is 1st request handler");
-//     next();
-//     // res.send("1st response");
-//   },
-//   (req, res, next) => {
-//     console.log("This is 2nd request handler");
-//     // res.send("2nd response");
-//     next();
-//   },
-//   [
-//     (req, res, next) => {
-//       console.log("this is 3rd request handler");
-//       // res.send("3rd response");
-//       next();
-//     },
-//     (req, res, next) => {
-//       console.log("this is 4th request handler");
-//       // res.send("4th response");
-//       next();
-//     },
-//   ],
-//   [
-//     [
-//       (req, res, next) => {
-//         console.log("this is 5th request handler");
-//         res.send("5th response");
-//         // next();
-//       },
-//     ],
-//   ],
-// ]);
-
-// app.get("/user", (req,res)=>{
-//   throw new Error("I am throwing error manually dude!!")
-// })
-
-// app.use("/", (err,req,res,next)=>{
-//   if(err){
-//   res.status(500).send(err.message)
-//   }
-// })
-
+app.use(cookieParser());
 app.use(express.json());
+
+
 app.post("/signup", async (req,res)=>{
 
-  // const user = new User({
-  //   firstName: "Rajeev",
-  //   lastName: "Kumar",
-  //   emailId: "rajeev@kumar.com",
-  //   password: "Rajiv@123"
-  // })
-
-  const user = new User(req.body)
-
   try {
+    // validate request.body
+  validateData(req);
+
+  const {firstName, lastName, emailId, password} = req.body;
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // console.log(passwordHash);
+
+  const user = new User({
+    firstName,
+    lastName,
+    emailId,
+    password: passwordHash,
+  });
+
     await user.save();
     res.send("User saved successfuly")
   } catch (error) {
     res.status(400).send("There is some problem in saving the data: " + error.message)
+  }
+})
+
+app.post("/login", async(req,res)=>{
+  
+  try {
+    
+    const {emailId, password} = req.body;
+    
+    if(!validator.isEmail(emailId)){
+     throw new Error("please enter valid email") 
+    }
+    
+    const user = await User.findOne({emailId})
+    
+    if(!user){
+      throw new Error("User not registered with us")
+    }
+    
+    const isValidPassword = await user.validatePassword(password);
+    
+    if(!isValidPassword){
+      throw new Error("Incorrect password!")
+    }else{
+      // create a jwt token
+      const token = await user.createJWT();
+      res.cookie("token",token)
+      res.send("Logged in Successfully!!")
+    }
+  } catch (error) {
+    res.status(400).send("There is some problem logging in: " + error.message)
+  }
+})
+
+
+app.get("/profile", userAuth, async(req,res)=>{
+  try {
+    const user = req.user;
+    res.send(user);
+  } catch (error) {
+    res.status(400).send("There is some problem in getting the profile: " + error.message)
+  }
+})
+
+app.post("/sendconnectionrequest",userAuth, async(req,res)=>{
+  try {
+    const user = req.user;
+    res.send(user.firstName + " sent a connection request");
+  } catch (error) {
+    res.status(400).send("There is some problem in sending connection request: " + error.message)
   }
 })
 
