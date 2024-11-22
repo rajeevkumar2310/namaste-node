@@ -47,15 +47,54 @@ requestRouter.post("/request/send/:status/:toUserId",userAuth, async(req,res)=>{
 
       const connectionRequestData = await connectionRequest.save();
 
-      res.json({
-        message: req.user.firstName + " " + status + " " + toUser.firstName,
-        data: connectionRequestData,
-      })
+      if(status ==="interested"){
+        return res.json({
+          message: req.user.firstName + " is " + status + " in " + toUser.firstName,
+          data: connectionRequestData,
+        })
+      }
 
+      if(status ==="ignored"){
+        return res.json({
+          message: req.user.firstName + " " + status + " " + toUser.firstName,
+          data: connectionRequestData,
+        })
+      }
     } catch (error) {
       res.status(400).send("There is some problem in sending connection request: " + error.message)
     }
   })
 
+requestRouter.post("/request/review/:status/:requestId", userAuth, async(req,res)=>{
+
+ try{
+  const loggedInUser = req.user;
+  const {status,requestId} = req.params;
+
+  // validate status
+  const allowedStatuses = ["accepted","rejected"];
+  if(!allowedStatuses.includes(status)){
+    return res.status(400).json({message:"invalid status: " + status});
+  }
+
+  // check if loggedInUser's ID is same as toUserId and the status is interested
+  const connectionRequest = await ConnectionRequest.findOne({_id : requestId,toUserId:loggedInUser._id, status: "interested"})
+  
+  if(!connectionRequest){
+    return res.status(400).json({message: "Connection request not found"})
+  }
+ 
+  const fromUser = await User.findById(connectionRequest.fromUserId)
+ 
+  connectionRequest.status = status;
+
+  const data = await connectionRequest.save();
+
+  res.status(200).json({message: loggedInUser.firstName + " " + status + " " + fromUser.firstName + "'s connection request", data});
+}catch(error){
+  res.status(400).send("Error: " + error.message)
+}
+
+})
 
   module.exports = requestRouter;

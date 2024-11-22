@@ -58,7 +58,7 @@ authRouter.post("/signup", async (req,res)=>{
         // create a jwt token
         const token = await user.createJWT();
         res.cookie("token",token)
-        res.send("Logged in Successfully!!")
+        res.send(user)
       }
     } catch (error) {
       res.status(400).send("There is some problem logging in: " + error.message)

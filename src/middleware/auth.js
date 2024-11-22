@@ -6,7 +6,7 @@ const userAuth = async(req,res,next)=>{
     const cookie = req.cookies;
     const {token} = cookie;
     if(!token){
-      throw new Error("invalid token. Please login again")
+     return res.status(401).send("You are not authorized!! Please login!")
     }
     const userId = await jwt.verify(token, "300thisissparta");
     const {_id} = userId;
